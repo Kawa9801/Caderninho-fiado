@@ -25,6 +25,16 @@ jobs:
           npx cap init "Caderno do Fiado" io.github.kawa9801.fiado --web-dir www
           npx cap add android
           npx cap sync android
+      - name: Icone do app
+        run: |
+          sudo apt-get install -y imagemagick
+          R=android/app/src/main/res
+          rm -rf $R/mipmap-anydpi-v26
+          for d in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
+            for n in ic_launcher ic_launcher_round; do
+              convert icons/icon-512.png -resize ${d#*:}x${d#*:} $R/mipmap-${d%%:*}/$n.png
+            done
+          done
       - name: Chave fixa (para o app poder ser atualizado sem apagar dados)
         run: |
           mkdir -p ~/.android
