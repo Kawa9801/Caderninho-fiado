@@ -46,7 +46,7 @@ label{display:block;font-size:15px;color:var(--mut);margin:10px 0 4px}
 .irow button{padding:0;min-height:44px}
 textarea{width:100%;min-height:90px;font:14px/1.3 monospace;background:var(--card);color:var(--ink);border:2px solid var(--line);border-radius:10px;padding:8px}
 .empty{text-align:center;color:var(--mut);padding:28px 8px}
-.az{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:8px}.az button{flex:none}button.l{min-height:42px;min-width:42px;padding:4px 11px;background:var(--card);color:var(--ink);border:1px solid var(--line)}button.on{background:var(--ac);color:var(--acx)}
+.btn{display:block;text-align:center;text-decoration:none;font-weight:700;border-radius:12px;padding:13px 16px;margin-bottom:8px;background:#25d366;color:#06361a}.az{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:8px}.az button{flex:none}button.l{min-height:42px;min-width:42px;padding:4px 11px;background:var(--card);color:var(--ink);border:1px solid var(--line)}button.on{background:var(--ac);color:var(--acx)}
 </style>
 </head>
 <body>
@@ -78,7 +78,8 @@ var BR=function(i){return i.split('-').reverse().join('/')};
 function addM(i,n){var p=i.split('-').map(Number),d=new Date(p[0],p[1]-1+n,1),last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();d.setDate(Math.min(p[2],last));return iso(d)}
 function esc(t){return String(t==null?'':t).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 var num=function(v){var n=parseFloat(String(v).replace(',','.'));return isNaN(n)?0:n};
-function saldo(c){var t=0,v=0,h=hoje();c.compras.forEach(function(x){x.parcelas.forEach(function(p){if(!p.pago){t+=p.valor;if(p.venc<h)v+=p.valor}})});return{t:t,v:v}}
+var resta=function(p){return Math.max(0,Math.round((p.valor-(p.rec||0))*100)/100)};
+function saldo(c){var t=0,v=0,h=hoje();c.compras.forEach(function(x){x.parcelas.forEach(function(p){if(!p.pago){var r=resta(p);t+=r;if(p.venc<h)v+=r}})});return{t:t,v:v}}
 function go(n,id){view={n:n,id:id};q='';lim=50;render();window.scrollTo(0,0)}
 function openM(h){document.getElementById('sh').innerHTML=h;document.getElementById('m').classList.add('on')}
 function closeM(){document.getElementById('m').classList.remove('on')}
@@ -89,8 +90,14 @@ function filtrados(){var nq=NF(q);return db.clientes.filter(function(c){return(!
 function setL(l){letra=l;lim=50;render()}
 function togDeve(){soDeve=!soDeve;lim=50;render()}
 function mais(){lim+=50;lst()}
+function atrHTML(){var h=hoje(),L=[];
+  db.clientes.forEach(function(c){var v=0,min=null;c.compras.forEach(function(x){x.parcelas.forEach(function(p){if(!p.pago&&p.venc<h){v+=resta(p);if(!min||p.venc<min)min=p.venc}})});if(v>0)L.push({c:c,v:v,min:min})});
+  L.sort(function(a,b){return a.min<b.min?-1:1});
+  var dias=function(m){return Math.round((new Date(h+'T00:00:00')-new Date(m+'T00:00:00'))/864e5)};
+  return'<button class="s sm" onclick="go(\'home\')">← Voltar</button><h1 style="margin-top:14px">Em atraso</h1>'+(L.length?L.map(function(r){return'<div class="card"><div class="row sp"><b>'+esc(r.c.nome)+'</b><b class="bad">'+R(r.v)+'</b></div><div class="lbl">parcela mais antiga: '+BR(r.min)+' ('+dias(r.min)+' dias)</div><div class="row" style="margin-top:8px"><button class="s sm" onclick="go(\'cli\',\''+r.c.id+'\')">Abrir</button>'+(r.c.tel?'<a class="btn" style="margin:0;padding:8px 14px" href="'+zap(r.c)+'" target="_blank" rel="noopener">WhatsApp</a>':'')+'</div></div>'}).join(''):'<div class="empty">Ninguém em atraso.</div>')}
 function render(){
   var a=document.getElementById('app');
+  if(view.n==='atr')return a.innerHTML=atrHTML();
   if(view.n==='cli'){var c=db.clientes.find(function(x){return x.id===view.id});if(c)return a.innerHTML=cliHTML(c);view={n:'home'}}
   var tot=0,ven=0,n=0;
   db.clientes.forEach(function(c){var s=saldo(c);tot+=s.t;ven+=s.v;if(s.t)n++});
@@ -101,7 +108,7 @@ function render(){
   '<div class="card"><div class="lbl">Atrasado</div><div class="big '+(ven?'bad':'')+'">'+R(ven)+'</div></div></div>'+
   '<div class="row" style="margin-bottom:10px"><input placeholder="Buscar cliente" value="'+esc(q)+'" oninput="q=this.value;lim=50;lst()" aria-label="Buscar cliente"><button onclick="novoCli()" style="white-space:nowrap">+ Cliente</button></div>'+
   '<div class="az">'+az+'</div>'+
-  '<p style="margin:0 0 12px"><button class="s sm'+(soDeve?' on':'')+'" onclick="togDeve()">Só quem deve</button></p>'+
+  '<p class="row" style="margin:0 0 12px"><button class="s sm'+(soDeve?' on':'')+'" onclick="togDeve()">Só quem deve</button><button class="s sm" onclick="go(\'atr\')">Ver atrasados</button></p>'+
   '<div id="lst">'+listHTML(filtrados())+'</div>'+
   '<p style="text-align:center;margin-top:24px"><button class="s sm" onclick="backup()">Cópia de segurança</button></p>';
 }
@@ -114,20 +121,23 @@ function listHTML(list){
   h+='<p class="lbl" style="text-align:center">Mostrando '+Math.min(lim,list.length)+' de '+list.length+'</p>';
   if(list.length>lim)h+='<p style="text-align:center"><button class="s" onclick="mais()">Mostrar mais</button></p>';
   return h}
+function zap(c){var d=c.tel.replace(/\D/g,'');if(d.length<=11)d='55'+d;var s=saldo(c);
+  var m='Olá, '+c.nome.split(' ')[0]+'! Tudo bem? Passando para lembrar que consta em aberto '+R(s.t)+' aqui na loja'+(s.v?', sendo '+R(s.v)+' em atraso':'')+'. Qualquer dúvida, é só me chamar!';
+  return'https://wa.me/'+d+'?text='+encodeURIComponent(m)}
 function cliHTML(c){
   var s=saldo(c),h=hoje();
   var compras=c.compras.slice().sort(function(a,b){return b.data<a.data?-1:1}).map(function(x){
     var itens=x.itens.map(function(i){return'<div class="it">'+esc(i.q)+' × '+esc(i.d)+' — '+R(i.q*i.p)+'</div>'}).join('');
     var pars=x.parcelas.map(function(p,k){
       var atras=!p.pago&&p.venc<h;
-      return'<div class="par '+(p.pago?'pago':'')+'"><div><b>'+(k+1)+'/'+x.parcelas.length+'</b> · '+BR(p.venc)+' '+(atras?'<span class="tag">atrasada</span>':'')+(p.pago?'<span class="tag ok">paga</span>':'')+'<div class="v">'+R(p.valor)+'</div></div>'+
-      '<button class="sm '+(p.pago?'s':'')+'" onclick="pagar(\''+c.id+'\',\''+x.id+'\','+k+')">'+(p.pago?'Desfazer':'Recebi')+'</button></div>'}).join('');
+      return'<div class="par '+(p.pago?'pago':'')+'"><div><b>'+(k+1)+'/'+x.parcelas.length+'</b> · '+BR(p.venc)+' '+(atras?'<span class="tag">atrasada</span>':'')+(p.pago?'<span class="tag ok">paga</span>':'')+'<div class="v">'+R(p.valor)+'</div>'+(p.rec>0&&!p.pago?'<div class="lbl">recebido '+R(p.rec)+' — falta '+R(resta(p))+'</div>':'')+'</div>'+
+      '<button class="sm '+(p.pago?'s':'')+'" onclick="'+(p.pago?'pagar':'receber')+'(\''+c.id+'\',\''+x.id+'\','+k+')">'+(p.pago?'Desfazer':'Recebi')+'</button></div>'}).join('');
     return'<div class="card"><div class="row sp"><b>'+BR(x.data)+'</b><b>'+R(x.total)+'</b></div>'+itens+'<div style="margin-top:8px">'+pars+'</div>'+
     '<p style="margin:10px 0 0"><button class="d sm" onclick="delCompra(\''+c.id+'\',\''+x.id+'\')">Apagar compra</button></p></div>'}).join('');
   return'<button class="s sm" onclick="go(\'home\')">← Voltar</button>'+
   '<div class="row sp" style="margin:14px 0"><div><h2>'+esc(c.nome)+'</h2>'+(c.tel?'<div class="lbl">'+esc(c.tel)+'</div>':'')+'</div><button class="s sm" onclick="editCli(\''+c.id+'\')">Editar</button></div>'+
   '<div class="card"><div class="lbl">Ele(a) deve</div><div class="big">'+R(s.t)+'</div>'+(s.v?'<div class="bad"><b>'+R(s.v)+' atrasado</b></div>':'')+'</div>'+
-  '<button style="width:100%;margin-bottom:8px" onclick="novaCompra(\''+c.id+'\')">+ Nova compra no fiado</button><button class="s" style="width:100%;margin-bottom:14px" onclick="novaCompra(\''+c.id+'\',1)">+ Lançar saldo antigo da ficha</button>'+
+  (s.t&&c.tel?'<a class="btn" href="'+zap(c)+'" target="_blank" rel="noopener">Cobrar pelo WhatsApp</a>':'')+'<button style="width:100%;margin-bottom:8px" onclick="novaCompra(\''+c.id+'\')">+ Nova compra no fiado</button><button class="s" style="width:100%;margin-bottom:14px" onclick="novaCompra(\''+c.id+'\',1)">+ Lançar saldo antigo da ficha</button>'+
   (compras||'<div class="empty">Nenhuma compra registrada.</div>');
 }
 function novoCli(){openM('<h2>Novo cliente</h2><label>Nome</label><input id="cn"><label>Telefone (opcional)</label><input id="ct" inputmode="tel"><p class="row"><button onclick="saveCli()">Salvar</button><button class="s" onclick="closeM()">Cancelar</button></p>');setTimeout(function(){document.getElementById('cn').focus()},50)}
@@ -137,7 +147,12 @@ function saveCli(id){var n=document.getElementById('cn').value.trim(),t=document
 function editCli(id){var c=db.clientes.find(function(x){return x.id===id});
   openM('<h2>Editar cliente</h2><label>Nome</label><input id="cn" value="'+esc(c.nome)+'"><label>Telefone</label><input id="ct" value="'+esc(c.tel)+'"><p class="row"><button onclick="saveCli(\''+id+'\')">Salvar</button><button class="s" onclick="closeM()">Cancelar</button></p><p><button class="d sm" onclick="delCli(\''+id+'\')">Apagar cliente</button></p>')}
 function delCli(id){if(confirm('Apagar este cliente e todas as compras dele?')){db.clientes=db.clientes.filter(function(x){return x.id!==id});delC(id);closeM();go('home')}}
-function pagar(cid,xid,k){var c=db.clientes.find(function(x){return x.id===cid}),x=c.compras.find(function(y){return y.id===xid}),p=x.parcelas[k];p.pago=!p.pago;saveC(c);render()}
+function pagar(cid,xid,k){var c=db.clientes.find(function(x){return x.id===cid}),x=c.compras.find(function(y){return y.id===xid}),p=x.parcelas[k];p.pago=false;p.rec=0;saveC(c);render()}
+function getP(cid,xid,k){var c=db.clientes.find(function(x){return x.id===cid});return{c:c,p:c.compras.find(function(y){return y.id===xid}).parcelas[k]}}
+function receber(cid,xid,k){var p=getP(cid,xid,k).p;
+  openM('<h2>Receber</h2><p class="lbl">Falta '+R(resta(p))+' nesta parcela.</p><label>Valor recebido</label><input id="rv" inputmode="decimal" value="'+String(resta(p)).replace('.',',')+'"><p class="row"><button onclick="okRec(\''+cid+'\',\''+xid+'\','+k+')">Confirmar</button><button class="s" onclick="closeM()">Cancelar</button></p>'+(p.rec>0?'<p><button class="d sm" onclick="closeM();pagar(\''+cid+'\',\''+xid+'\','+k+')">Zerar o que foi recebido</button></p>':''))}
+function okRec(cid,xid,k){var o=getP(cid,xid,k),p=o.p,v=num(document.getElementById('rv').value);if(v<=0)return;
+  p.rec=Math.round(((p.rec||0)+v)*100)/100;if(p.rec>=p.valor-0.005){p.rec=p.valor;p.pago=true}saveC(o.c);closeM();render()}
 function delCompra(cid,xid){if(confirm('Apagar esta compra?')){var c=db.clientes.find(function(x){return x.id===cid});c.compras=c.compras.filter(function(y){return y.id!==xid});saveC(c);render()}}
 
 function novaCompra(cid,antigo){
