@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f766e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>Caderno do Fiado</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800&display=swap">
+<style>
+:root{--bg:#f2f5f3;--card:#fff;--ink:#1b2a36;--mut:#5d6b76;--line:#d9e1dd;--ac:#0f766e;--acx:#fff;--bad:#b42318;--badbg:#fde8e6;--ok:#17653a;--okbg:#e1f4e8;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121a20;--card:#1b262e;--ink:#e8eef2;--mut:#9aabb6;--line:#2c3b46;--ac:#3fc1b3;--acx:#07211e;--bad:#ff8a7d;--badbg:#3a1f1c;--ok:#7be0a1;--okbg:#17301f;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121a20;--card:#1b262e;--ink:#e8eef2;--mut:#9aabb6;--line:#2c3b46;--ac:#3fc1b3;--acx:#07211e;--bad:#ff8a7d;--badbg:#3a1f1c;--ok:#7be0a1;--okbg:#17301f;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 18px/1.4 Nunito,system-ui,sans-serif}
+main{max-width:640px;margin:0 auto;padding:16px 16px 90px}
+h1{font-size:28px;font-weight:800;margin:8px 0 14px}
+h2{font-size:22px;font-weight:800;margin:0}
+.row{display:flex;gap:10px;align-items:center}.sp{justify-content:space-between}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.sum{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.sum .card{margin:0}.lbl{color:var(--mut);font-size:15px}.big{font-size:26px;font-weight:800}
+.bad{color:var(--bad)}
+button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:12px 16px;background:var(--ac);color:var(--acx);cursor:pointer;min-height:48px}
+button.s{background:transparent;color:var(--ac);border:2px solid var(--ac)}
+button.d{background:transparent;color:var(--bad);border:2px solid var(--bad)}
+button.sm{padding:6px 12px;min-height:38px;font-size:16px}
+button:focus-visible,input:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+input{font:inherit;width:100%;padding:11px 12px;border:2px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);min-height:48px}
+label{display:block;font-size:15px;color:var(--mut);margin:10px 0 4px}
+.cli{display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;width:100%;text-align:left;background:var(--card);color:var(--ink);border:1px solid var(--line);margin-bottom:10px;padding:14px;font-weight:600}
+.tag{display:inline-block;font-size:14px;font-weight:700;padding:2px 9px;border-radius:99px;background:var(--badbg);color:var(--bad)}
+.tag.ok{background:var(--okbg);color:var(--ok)}
+.par{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line)}
+.par.pago{color:var(--mut)}.par.pago .v{text-decoration:line-through}
+.it{color:var(--mut);font-size:16px;margin:2px 0}
+#m{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:flex-end;justify-content:center;z-index:20}
+#m.on{display:flex}
+.sheet{background:var(--bg);width:100%;max-width:640px;max-height:92%;overflow:auto;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px))}
+.irow{display:grid;grid-template-columns:1fr 64px 92px 38px;gap:6px;margin-bottom:6px;align-items:center}
+.irow button{padding:0;min-height:44px}
+textarea{width:100%;min-height:90px;font:14px/1.3 monospace;background:var(--card);color:var(--ink);border:2px solid var(--line);border-radius:10px;padding:8px}
+.empty{text-align:center;color:var(--mut);padding:28px 8px}
+.wrap{overflow-x:auto}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<div id="m" onclick="if(event.target===this)closeM()"><div class="sheet" id="sh"></div></div>
+<script>
+var K='caderno-fiado-v1',db={clientes:[]},view={n:'home'},q='',draft=null;
+try{var s=localStorage.getItem(K);if(s)db=JSON.parse(s)}catch(e){}
+function save(){try{localStorage.setItem(K,JSON.stringify(db))}catch(e){}}
+var R=function(v){return v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})};
+var uid=function(){return Math.random().toString(36).slice(2,9)};
+var pad=function(n){return String(n).padStart(2,'0')};
+var iso=function(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
+var hoje=function(){return iso(new Date())};
+var BR=function(i){return i.split('-').reverse().join('/')};
+function addM(i,n){var p=i.split('-').map(Number),d=new Date(p[0],p[1]-1+n,1),last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();d.setDate(Math.min(p[2],last));return iso(d)}
+function esc(t){return String(t==null?'':t).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+var num=function(v){var n=parseFloat(String(v).replace(',','.'));return isNaN(n)?0:n};
+function saldo(c){var t=0,v=0,h=hoje();c.compras.forEach(function(x){x.parcelas.forEach(function(p){if(!p.pago){t+=p.valor;if(p.venc<h)v+=p.valor}})});return{t:t,v:v}}
+function go(n,id){view={n:n,id:id};q='';render();window.scrollTo(0,0)}
+function openM(h){document.getElementById('sh').innerHTML=h;document.getElementById('m').classList.add('on')}
+function closeM(){document.getElementById('m').classList.remove('on')}
+
+function render(){
+  var a=document.getElementById('app');
+  if(view.n==='cli'){var c=db.clientes.find(function(x){return x.id===view.id});if(c)return a.innerHTML=cliHTML(c);view={n:'home'}}
+  var tot=0,ven=0;
+  db.clientes.forEach(function(c){var s=saldo(c);tot+=s.t;ven+=s.v});
+  var list=db.clientes.filter(function(c){return c.nome.toLowerCase().indexOf(q.toLowerCase())>-1})
+    .sort(function(x,y){return saldo(y).t-saldo(x).t});
+  a.innerHTML='<h1>Caderno do Fiado</h1>'+
+  '<div class="sum"><div class="card"><div class="lbl">A receber</div><div class="big">'+R(tot)+'</div></div>'+
+  '<div class="card"><div class="lbl">Atrasado</div><div class="big '+(ven?'bad':'')+'">'+R(ven)+'</div></div></div>'+
+  '<div class="row" style="margin-bottom:12px"><input placeholder="Buscar cliente" value="'+esc(q)+'" oninput="q=this.value;lst()" aria-label="Buscar cliente"><button onclick="novoCli()" style="white-space:nowrap">+ Cliente</button></div>'+
+  '<div id="lst">'+listHTML(list)+'</div>'+
+  '<p style="text-align:center;margin-top:24px"><button class="s sm" onclick="backup()">Cópia de segurança</button></p>';
+}
+function lst(){var list=db.clientes.filter(function(c){return c.nome.toLowerCase().indexOf(q.toLowerCase())>-1}).sort(function(x,y){return saldo(y).t-saldo(x).t});document.getElementById('lst').innerHTML=listHTML(list)}
+function listHTML(list){
+  if(!db.clientes.length)return'<div class="empty">Nenhum cliente ainda.<br>Toque em “+ Cliente” para começar.</div>';
+  if(!list.length)return'<div class="empty">Ninguém com esse nome.</div>';
+  return list.map(function(c){var s=saldo(c);
+    return'<button class="cli" onclick="go(\'cli\',\''+c.id+'\')"><span>'+esc(c.nome)+(s.v?'<br><span class="tag">atrasado '+R(s.v)+'</span>':'')+'</span><span style="font-size:20px;font-weight:800">'+(s.t?R(s.t):'<span class="tag ok">em dia</span>')+'</span></button>'}).join('');
+}
+function cliHTML(c){
+  var s=saldo(c),h=hoje();
+  var compras=c.compras.slice().sort(function(a,b){return b.data<a.data?-1:1}).map(function(x){
+    var itens=x.itens.map(function(i){return'<div class="it">'+esc(i.q)+' × '+esc(i.d)+' — '+R(i.q*i.p)+'</div>'}).join('');
+    var pars=x.parcelas.map(function(p,k){
+      var atras=!p.pago&&p.venc<h;
+      return'<div class="par '+(p.pago?'pago':'')+'"><div><b>'+(k+1)+'/'+x.parcelas.length+'</b> · '+BR(p.venc)+' '+(atras?'<span class="tag">atrasada</span>':'')+(p.pago?'<span class="tag ok">paga</span>':'')+'<div class="v">'+R(p.valor)+'</div></div>'+
+      '<button class="sm '+(p.pago?'s':'')+'" onclick="pagar(\''+c.id+'\',\''+x.id+'\','+k+')">'+(p.pago?'Desfazer':'Recebi')+'</button></div>'}).join('');
+    return'<div class="card"><div class="row sp"><b>'+BR(x.data)+'</b><b>'+R(x.total)+'</b></div>'+itens+'<div style="margin-top:8px">'+pars+'</div>'+
+    '<p style="margin:10px 0 0"><button class="d sm" onclick="delCompra(\''+c.id+'\',\''+x.id+'\')">Apagar compra</button></p></div>'}).join('');
+  return'<button class="s sm" onclick="go(\'home\')">← Voltar</button>'+
+  '<div class="row sp" style="margin:14px 0"><div><h2>'+esc(c.nome)+'</h2>'+(c.tel?'<div class="lbl">'+esc(c.tel)+'</div>':'')+'</div><button class="s sm" onclick="editCli(\''+c.id+'\')">Editar</button></div>'+
+  '<div class="card"><div class="lbl">Ele(a) deve</div><div class="big">'+R(s.t)+'</div>'+(s.v?'<div class="bad"><b>'+R(s.v)+' atrasado</b></div>':'')+'</div>'+
+  '<button style="width:100%;margin-bottom:14px" onclick="novaCompra(\''+c.id+'\')">+ Nova compra no fiado</button>'+
+  (compras||'<div class="empty">Nenhuma compra registrada.</div>');
+}
+function novoCli(){openM('<h2>Novo cliente</h2><label>Nome</label><input id="cn"><label>Telefone (opcional)</label><input id="ct" inputmode="tel"><p class="row"><button onclick="saveCli()">Salvar</button><button class="s" onclick="closeM()">Cancelar</button></p>');setTimeout(function(){document.getElementById('cn').focus()},50)}
+function saveCli(id){var n=document.getElementById('cn').value.trim(),t=document.getElementById('ct').value.trim();if(!n)return document.getElementById('cn').focus();
+  if(id){var c=db.clientes.find(function(x){return x.id===id});c.nome=n;c.tel=t}else db.clientes.push({id:uid(),nome:n,tel:t,compras:[]});
+  save();closeM();render()}
+function editCli(id){var c=db.clientes.find(function(x){return x.id===id});
+  openM('<h2>Editar cliente</h2><label>Nome</label><input id="cn" value="'+esc(c.nome)+'"><label>Telefone</label><input id="ct" value="'+esc(c.tel)+'"><p class="row"><button onclick="saveCli(\''+id+'\')">Salvar</button><button class="s" onclick="closeM()">Cancelar</button></p><p><button class="d sm" onclick="delCli(\''+id+'\')">Apagar cliente</button></p>')}
+function delCli(id){if(confirm('Apagar este cliente e todas as compras dele?')){db.clientes=db.clientes.filter(function(x){return x.id!==id});save();closeM();go('home')}}
+function pagar(cid,xid,k){var c=db.clientes.find(function(x){return x.id===cid}),x=c.compras.find(function(y){return y.id===xid}),p=x.parcelas[k];p.pago=!p.pago;save();render()}
+function delCompra(cid,xid){if(confirm('Apagar esta compra?')){var c=db.clientes.find(function(x){return x.id===cid});c.compras=c.compras.filter(function(y){return y.id!==xid});save();render()}}
+
+function novaCompra(cid){
+  draft={cid:cid,itens:[{d:'',q:'1',p:''}],data:hoje(),venc:addM(hoje(),1),n:'1'};
+  openM('<h2>Nova compra</h2><label>Itens</label><div id="its"></div><button class="s sm" onclick="addIt()">+ Item</button>'+
+  '<div class="card" style="margin-top:12px"><div class="lbl">Total</div><div class="big" id="tt">R$ 0,00</div></div>'+
+  '<label>Data da compra</label><input type="date" value="'+draft.data+'" onchange="draft.data=this.value;calc()">'+
+  '<label>Número de parcelas</label><input inputmode="numeric" value="1" oninput="draft.n=this.value;calc()">'+
+  '<label>Vencimento da 1ª parcela</label><input type="date" value="'+draft.venc+'" onchange="draft.venc=this.value;calc()">'+
+  '<div class="lbl" id="pv" style="margin-top:8px"></div>'+
+  '<p class="row"><button onclick="saveCompra()">Salvar compra</button><button class="s" onclick="closeM()">Cancelar</button></p>');
+  its();calc()}
+function its(){document.getElementById('its').innerHTML=draft.itens.map(function(i,k){
+  return'<div class="irow"><input placeholder="Produto" value="'+esc(i.d)+'" oninput="draft.itens['+k+'].d=this.value"><input inputmode="decimal" placeholder="Qtd" value="'+esc(i.q)+'" oninput="draft.itens['+k+'].q=this.value;calc()"><input inputmode="decimal" placeholder="R$ un." value="'+esc(i.p)+'" oninput="draft.itens['+k+'].p=this.value;calc()"><button class="d" onclick="rmIt('+k+')" aria-label="Remover item">×</button></div>'}).join('')}
+function addIt(){draft.itens.push({d:'',q:'1',p:''});its()}
+function rmIt(k){if(draft.itens.length>1){draft.itens.splice(k,1);its();calc()}}
+function totalC(){return Math.round(draft.itens.reduce(function(t,i){return t+num(i.q)*num(i.p)},0)*100)}
+function calc(){var t=totalC(),n=Math.max(1,Math.min(60,parseInt(draft.n)||1));
+  document.getElementById('tt').textContent=R(t/100);
+  document.getElementById('pv').textContent=t?n+'× de '+R(Math.floor(t/n)/100)+', a partir de '+(draft.venc?BR(draft.venc):'—'):''}
+function saveCompra(){
+  var t=totalC(),n=Math.max(1,Math.min(60,parseInt(draft.n)||1));
+  if(!t)return alert('Informe pelo menos um item com valor.');
+  if(!draft.venc||!draft.data)return alert('Confira as datas.');
+  var base=Math.floor(t/n),pars=[];
+  for(var k=0;k<n;k++)pars.push({venc:addM(draft.venc,k),valor:(k===n-1?t-base*(n-1):base)/100,pago:false});
+  var itens=draft.itens.filter(function(i){return num(i.p)>0}).map(function(i){return{d:i.d.trim()||'Item',q:num(i.q)||1,p:num(i.p)}});
+  var c=db.clientes.find(function(x){return x.id===draft.cid});
+  c.compras.push({id:uid(),data:draft.data,itens:itens,total:t/100,parcelas:pars});
+  save();closeM();render()}
+
+function backup(){openM('<h2>Cópia de segurança</h2><p class="lbl">Os dados ficam só neste aparelho. Copie o texto abaixo e guarde (por exemplo, mandando para você no WhatsApp).</p><textarea id="bk" readonly>'+esc(JSON.stringify(db))+'</textarea><p><button onclick="cp()">Copiar</button></p><label>Restaurar: cole aqui uma cópia</label><textarea id="rs"></textarea><p class="row"><button class="s" onclick="rest()">Restaurar</button><button class="s" onclick="closeM()">Fechar</button></p>')}
+function cp(){var t=document.getElementById('bk');t.select();try{navigator.clipboard.writeText(t.value)}catch(e){document.execCommand('copy')}}
+function rest(){try{var d=JSON.parse(document.getElementById('rs').value);if(!d.clientes)throw 0;if(confirm('Isto substitui os dados atuais. Continuar?')){db=d;save();closeM();go('home')}}catch(e){alert('Texto inválido.')}}
+render();
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(function(){});
+</script>
+</body>
+</html>
